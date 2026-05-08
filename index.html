@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+<div style="position: fixed; top: 0; left: 0; font-size: 10px; padding: 5px; color: #ffffff; font-weight: bold; text-align: left; z-index: 1000;">
+    <div>قسم الفنون البصرية</div>
+    <div>مع تحيات قسم التعليم الإلكتروني</div>
+</div>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>معرض الصور ثلاثي الأبعاد - 100 صورة</title>
+    <title>معرض الصور - الكعبان</title>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
     <style>
-        /* تنسيق خلفية الصفحة */
         body {
             background-color: #0f0f0f;
             color: #ffffff;
@@ -24,82 +27,94 @@
 
         .container {
             width: 100%;
-            padding: 50px 0;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         h1 {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             font-weight: 300;
-            letter-spacing: 2px;
             color: #00d4ff;
+            padding: 0 15px;
         }
 
-        /* تنسيق منطقة العرض */
+        #play-btn {
+            background: transparent;
+            border: 2px solid #00d4ff;
+            color: #00d4ff;
+            padding: 10px 25px;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            opacity: 0; 
+            visibility: hidden;
+            font-weight: bold;
+            z-index: 200;
+        }
+
+        #play-btn.show { opacity: 1; visibility: visible; }
+
         .swiper {
             width: 100%;
             padding-top: 50px;
-            padding-bottom: 100px;
+            padding-bottom: 80px;
+            overflow: visible !important; 
         }
 
         .swiper-slide {
-            background-position: center;
-            background-size: cover;
-            width: 320px; /* عرض الصورة */
-            height: 450px; /* طول الكرت */
+            width: 320px; 
+            height: 450px; 
             background: #1a1a1a;
             border-radius: 20px;
-            overflow: hidden;
+            overflow: visible !important; 
             display: flex;
             flex-direction: column;
             box-shadow: 0 20px 40px rgba(0,0,0,0.5);
             border: 1px solid rgba(255,255,255,0.1);
+            transition: z-index 0.3s;
         }
 
-        /* تنسيق الصورة داخل الكرت */
-        .swiper-slide img {
+        .swiper-zoom-container {
             width: 100%;
             height: 75%;
+            position: relative;
+            overflow: visible !important; 
+        }
+
+        .swiper-slide img {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
+            border-radius: 20px 20px 0 0;
             border-bottom: 2px solid #00d4ff;
         }
 
-        /* تنسيق النص تحت الصورة */
         .text-content {
             padding: 20px;
             text-align: center;
             background: #1a1a1a;
+            border-radius: 0 0 20px 20px;
             flex-grow: 1;
+            z-index: 10;
         }
 
-        .text-content h3 {
-            margin: 0;
-            font-size: 1.2rem;
-            color: #00d4ff; /* تم تغيير اللون لتمييز اسم الفنان */
-        }
-
-        .text-content p {
-            margin: 5px 0 0;
-            font-size: 0.9rem;
-            color: #aaa;
-        }
-
-        /* تنسيق نقاط التنقل في الأسفل */
-        .swiper-pagination-bullet {
-            background: #00d4ff;
-        }
+        .text-content h3 { margin: 0; font-size: 1.2rem; color: #fff; }
+        .text-content p { margin: 5px 0 0; font-size: 1rem; color: #00d4ff; font-weight: bold; }
+        .swiper-pagination-bullet { background: #00d4ff; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>معرض الأعمال الفنية</h1>
+    <h1>معرض الصور - الكعبان ب.ع.ث للبنين 2025-2026</h1>
+    <button id="play-btn" onclick="resumeAutoplay()">استمرار العرض التلقائي</button>
     
     <div class="swiper mySwiper">
-        <div class="swiper-wrapper" id="gallery-wrapper">
-            <!-- سيتم ملء البيانات هنا عبر الجافا سكريبت -->
-        </div>
-        
+        <div class="swiper-wrapper" id="gallery-wrapper"></div>
         <div class="swiper-pagination"></div>
     </div>
 </div>
@@ -108,68 +123,90 @@
 
 <script>
     const wrapper = document.getElementById('gallery-wrapper');
+    const playBtn = document.getElementById('play-btn');
 
-    // وظيفة جلب البيانات من ملف الـ CSV وتوليد المعرض
+    // وظيفة لقراءة ملف CSV وتوليد المعرض
     async function loadGallery() {
         try {
             const response = await fetch('data.csv');
-            if (!response.ok) throw new Error("تأكد من وجود ملف data.csv في نفس المجلد");
-            
             const data = await response.text();
-            const rows = data.split('\n').filter(row => row.trim() !== '');
+            
+            // تحويل النص إلى أسطر ثم مصفوفة بيانات
+            const rows = data.split('\n').slice(1); // تجاهل سطر العنوان الأول
+            const nameMap = {};
 
-            // نبدأ من 1 لتجاهل سطر العنوان (Header) في ملف الأكسل
-            for (let i = 1; i < rows.length; i++) {
-                const columns = rows[i].split(',');
+            rows.forEach(row => {
+                const columns = row.split(',');
                 if (columns.length >= 2) {
-                    const imgNumber = columns[0].trim(); // العمود الأول: رقم الصورة
-                    const artistName = columns[1].trim(); // العمود الثاني: اسم الفنان
-
-                    wrapper.innerHTML += `
-                        <div class="swiper-slide">
-                            <img src="images/${imgNumber}.JPEG" alt="${artistName}" onerror="this.src='https://via.placeholder.com/320x450?text=Missing+Image'">
-                            <div class="text-content">
-                                <h3>${artistName}</h3>
-                                <p>عمل فني رقم ${imgNumber}</p>
-                            </div>
-                        </div>`;
+                    const id = columns[0].trim();
+                    const name = columns[1].trim();
+                    nameMap[id] = name;
                 }
+            });
+
+            // توليد الـ 100 صورة
+            for (let i = 1; i <= 100; i++) {
+                const studentName = nameMap[i] || "اسم الطالب غير مسجل";
+                wrapper.innerHTML += `
+                    <div class="swiper-slide">
+                        <div class="swiper-zoom-container">
+                            <img src="images/${i}.JPEG" alt="صورة رقم ${i}" onerror="this.src='https://via.placeholder.com/320x450?text=Image+Not+Found'">
+                        </div>
+                        <div class="text-content">
+                            <h3>عمل الطالب رقم ${i}</h3>
+                            <p>${studentName}</p>
+                        </div>
+                    </div>`;
             }
 
-            // تشغيل السلايدر بعد انتهاء الـ Fetch
+            // تشغيل السلايدر بعد تحميل البيانات
             initSwiper();
 
         } catch (error) {
-            console.error("خطأ:", error);
-            wrapper.innerHTML = `<p style="text-align:center; color:red;">${error.message}</p>`;
+            console.error("خطأ في تحميل ملف CSV:", error);
+            // في حال فشل تحميل الملف، يتم العرض الافتراضي
+            alert("تنبيه: لم يتم العثور على ملف data.csv أو تنسيقه غير صحيح.");
         }
     }
 
-    // إعدادات التأثير ثلاثي الأبعاد
+    let swiper;
     function initSwiper() {
-        new Swiper(".mySwiper", {
-            effect: "coverflow",
+        swiper = new Swiper(".mySwiper", {
+            effect: "coverflow", 
             grabCursor: true,
             centeredSlides: true,
             slidesPerView: "auto",
             loop: true,
+            zoom: {
+                maxRatio: 2.5,
+                minRatio: 1,
+                toggle: true, 
+            },
+            mousewheel: true, 
             coverflowEffect: {
-                rotate: 35,
-                stretch: 0,
-                depth: 250,
-                modifier: 1,
-                slideShadows: true,
+                rotate: 35, stretch: 0, depth: 250, modifier: 1, slideShadows: false, 
             },
             autoplay: {
                 delay: 3000,
-                disableOnInteraction: false,
+                disableOnInteraction: true, 
             },
-            pagination: {
-                el: ".swiper-pagination",
-                clickable: true,
+            pagination: { el: ".swiper-pagination", clickable: true },
+            on: {
+                autoplayStop: function () { playBtn.classList.add('show'); },
+                autoplayStart: function () { playBtn.classList.remove('show'); },
+                zoomChange: function(s, scale, imageEl) {
+                    if (scale > 1) {
+                        this.autoplay.stop();
+                        if(this.clickedSlide) this.clickedSlide.style.zIndex = "1000";
+                    } else {
+                        if(this.clickedSlide) this.clickedSlide.style.zIndex = "1";
+                    }
+                }
             },
         });
     }
+
+    function resumeAutoplay() { if(swiper) swiper.autoplay.start(); }
 
     // بدء العملية
     loadGallery();
